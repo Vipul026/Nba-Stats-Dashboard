@@ -1,6 +1,5 @@
 package com.vipul.nbastatsspringboot.controllers;
 
-import com.sun.org.apache.regexp.internal.RE;
 import com.vipul.nbastatsspringboot.services.PlayerServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/players")
@@ -27,13 +25,18 @@ public class PlayerController {
 
 
     @GetMapping("/all-players")
-    public ResponseEntity<?> getAllPlayers(){
+    public ResponseEntity<?> getAllPlayers() throws IOException {
         return new ResponseEntity<>(playerServices.getAllPlayers(), HttpStatus.OK);
     }
 
-    @GetMapping("/search/{name}")
-    public ResponseEntity<?> searchPlayer(@PathVariable("name") String name){
-        return new ResponseEntity<>(playerServices.searchPlayer(name), HttpStatus.OK);
+    @GetMapping("/search")
+    public ResponseEntity<?> searchPlayer(@RequestParam String firstName, @RequestParam String lastName){
+        return new ResponseEntity<>(playerServices.findPlayers(firstName, lastName), HttpStatus.OK);
+    }
+
+    @GetMapping("/search/{firstName}")
+    public ResponseEntity<?> searchPlayer(@PathVariable("firstName") String firstName) throws IOException {
+        return new ResponseEntity<>(playerServices.findByFirstName(firstName), HttpStatus.OK);
     }
 
     @GetMapping("/page/{page_no}")

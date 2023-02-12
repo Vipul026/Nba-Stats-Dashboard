@@ -2,6 +2,7 @@ package com.vipul.nbastatsspringboot.services;
 
 import com.vipul.nbastatsspringboot.entity.Game;
 import com.vipul.nbastatsspringboot.entity.GameData;
+import com.vipul.nbastatsspringboot.repository.GameRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,9 @@ public class GameServices {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private GameRepository gameRepository;
+
     public ResponseEntity<?> getAllGames(){
         try{
             String uri = gamesUrl;
@@ -31,19 +35,6 @@ public class GameServices {
 
             String result = restTemplate.getForObject(uri, String.class);
             LOGGER.info(result);
-
-//            String[] arr = result.split(",");
-//            for(int i=0;i< arr.length;i++){
-//                System.out.println(arr[i]);
-//            }
-
-//            JSONArray arr = new JSONArray(result);
-//
-//            for(int i=0;i<arr.length();i++){
-//                JSONObject obj = new JSONObject(i);
-//                System.out.println(obj.getString("id"));
-//                System.out.println(obj.getString("date"));
-//            }
 
             return new ResponseEntity<>(result, HttpStatus.OK);
         }catch (Exception e){
@@ -58,23 +49,8 @@ public class GameServices {
             String uri = gamesUrl + "?seasons[]=" + season;
             System.out.println(uri);
 
-//            String result = restTemplate.getForObject(uri, String.class);
-//            LOGGER.info(result);
-
             GameData result = restTemplate.getForObject(uri, GameData.class);
             LOGGER.info(result.toString());
-
-//            List<Datum> data = result.getData();
-//            System.out.println(data.size());
-
-//            List<String> dates = new ArrayList<>();
-//            Collections.sort(dates);
-//            System.out.println(dates.get(dates.size() - 1));
-
-//            for(Datum value: data){
-//                dates.add(value.getDate());
-//            }
-//            System.out.println(dates);
 
             return new ResponseEntity<>(result, HttpStatus.OK);
         }catch (Exception e){
@@ -162,7 +138,113 @@ public class GameServices {
 
 
     //Elastic Search Methods
-    public void saveAllGamesData(){
+    public String saveAllGamesData() throws InterruptedException {
+        String uri = gamesUrl;
+        System.out.println(uri);
 
+        GameData gameData = restTemplate.getForObject(uri, GameData.class);
+        LOGGER.info(gameData.toString());
+
+        List<Game> games = gameData.getData();
+
+        gameRepository.saveAll(games);
+
+        Long totalPages = gameData.getMeta().getTotalPages();
+
+        for(long i=2;i<=totalPages;i++){
+            String perPageData = uri + "?page=" + i;
+            gameData = restTemplate.getForObject(perPageData, GameData.class);
+            games = gameData.getData();
+            LOGGER.info(games.toString());
+
+            gameRepository.saveAll(games);
+            Thread.sleep(2000);
+        }
+
+        return "Game data added successfully";
+    }
+
+    //Method for finding the season champions
+    public String getSeasonChampions(Long season){
+
+        List<Game> allGames = gameRepository.findBySeason(season);
+
+        List<Date> dates = new ArrayList<>();
+
+        for(Game game: allGames){
+            dates.add(game.getDate());
+        }
+
+        Collections.sort(dates);
+
+        System.out.println(dates.get(dates.size()-1));
+        Date dateofLastGame = dates.get(dates.size() - 1);
+
+        Game lastGameofSeason = gameRepository.findByDate(dateofLastGame);
+
+        if(lastGameofSeason.getHomeTeamScore() > lastGameofSeason.getVisitorTeamScore())
+            return lastGameofSeason.getHomeTeam().getFullName();
+
+        return lastGameofSeason.getVisitorTeam().getFullName();
+    }
+
+    //Season performance in consecutive seasons
+    public String getGamesWonByTeamInSeason(Long season, String teamName){
+
+        List<Game> allGames = gameRepository.findBySeason(season);
+
+        int noOfWins = 0, noOfLoss = 0;
+
+        for(Game game: allGames){
+            if(game.getHomeTeam().getName().equals(teamName)){
+                if(game.getHomeTeamScore() > game.getVisitorTeamScore())
+                    noOfWins++;
+                else
+                    noOfLoss++;
+            }
+            else if(game.getVisitorTeam().getName().equals(teamName)){
+                if(game.getVisitorTeamScore() > game.getHomeTeamScore()){
+                    noOfWins++;
+                }
+                else{
+                    noOfLoss++;
+                }
+            }
+        }
+
+        System.out.println(noOfWins+" "+noOfLoss);
+
+        return noOfWins+" "+noOfLoss;
+    }
+
+    public Map<Long, String> getTeamPerformanceInVariousSeasons(Long fromSeason, Long toSeason, String teamName){
+        Map<Long, String> seasonStat = new HashMap<>();
+        int noOfWins, noOfLoss;
+
+        for(long i = fromSeason; i<=toSeason; i++){
+            List<Game> allGames = gameRepository.findBySeason(i);
+            noOfWins = 0; noOfLoss = 0;
+
+            for(Game game: allGames){
+
+                if(game.getHomeTeam().getName().equals(teamName)){
+                    if(game.getHomeTeamScore() > game.getVisitorTeamScore())
+                        noOfWins++;
+                    else
+                        noOfLoss++;
+                }
+                else if(game.getVisitorTeam().getName().equals(teamName)){
+                    if(game.getVisitorTeamScore() > game.getHomeTeamScore()){
+                        noOfWins++;
+                    }
+                    else{
+                        noOfLoss++;
+                    }
+                }
+                String teamStat = noOfWins+" "+noOfLoss;
+                seasonStat.put(i, teamStat);
+            }
+        }
+        return seasonStat;
     }
 }

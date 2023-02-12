@@ -1,15 +1,18 @@
 package com.vipul.nbastatsspringboot.services;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch.core.*;
 import com.vipul.nbastatsspringboot.entity.Player;
 import com.vipul.nbastatsspringboot.entity.PlayersData;
 import com.vipul.nbastatsspringboot.repository.PlayerRepository;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.springframework.data.elasticsearch.core.SearchHits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.configurationprocessor.json.JSONObject;
+import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class PlayerServices {
@@ -29,8 +33,8 @@ public class PlayerServices {
     @Autowired
     private PlayerRepository playerRepository;
 
-//    @Autowired
-//    private ElasticsearchClient elasticsearchClient;
+    @Autowired
+    private ElasticsearchRestTemplate template;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -44,38 +48,16 @@ public class PlayerServices {
                 uri, Player.class);
         LOGGER.info(player.toString());
 
-        return playerRepository.save(player);
-
-       // return player.toString();
-
-        //System.out.println(playerRepository.findById(playerId));
-
-
-//        IndexResponse response = elasticsearchClient.index(i -> i
-//                .index(indexName)
-//                .id(playerId.toString())
-//                .document(player)
-//        );
-//
-//        if(response.result().name().equals("Created")){
-//            return new StringBuilder("Document has been successfully created.").toString();
-//        }else if(response.result().name().equals("Updated")){
-//            return new StringBuilder("Document has been successfully updated.").toString();
-//        }
-//        return new StringBuilder("Error while performing the operation.").toString();
+        return player;
     }
 
-    public ResponseEntity<?> getAllPlayers(){
+    public ResponseEntity<?> getAllPlayers() throws IOException {
         try {
             String uri = playersUrl;
             System.out.println(uri);
 
             String result = restTemplate.getForObject(uri, String.class);
             LOGGER.info(result);
-
-//            JSONObject jsonObject= new JSONObject(result);
-//
-//            List<Player> listPlayers = jsonObject;
 
             return new ResponseEntity<>(result, HttpStatus.OK);
 
@@ -139,7 +121,6 @@ public class PlayerServices {
 
         for(long i=2; i<=totalPages; i++){
             String perPageData = uri + "?page=" + i;
-//            System.out.println(perPageData);
             playersData = restTemplate.getForObject(perPageData, PlayersData.class);
             allPlayers = playersData.getData();
             LOGGER.info(allPlayers.toString());
@@ -149,8 +130,32 @@ public class PlayerServices {
             delayTask();
         }
 
-//        System.out.println(allPlayers);
-
         return "Players data added successfully";
     }
+
+    //Finding Players from elastic search
+    public SearchHits<Player> findPlayers(String firstName, String lastName){
+
+        QueryBuilder query = QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("firstName", firstName))
+                .must(QueryBuilders.matchQuery("lastName", lastName));
+
+        NativeSearchQuery nativeSearchQuery = new NativeSearchQueryBuilder().withQuery(query).build();
+        SearchHits<Player> players = template.search(nativeSearchQuery, Player.class);
+
+        List<Player> list = new ArrayList<>();
+
+        list = players.stream().map(e -> e.getContent()).collect(Collectors.toList());
+
+        System.out.println(list);
+
+        return players;
+    }
+
+    public List<Player> findByFirstName(String firstName) throws IOException {
+        List<Player> players = playerRepository.findByFirstName(firstName);
+        LOGGER.info(players.toString());
+        return players;
+    }
+
+
 }

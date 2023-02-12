@@ -22,13 +22,5 @@ public class NbaStatsSpringBootApplication {
 		return builder.build();
 	}
 
-//	@Bean
-//	public CommandLineRunner run(RestTemplate restTemplate) throws Exception {
-//		return args -> {
-//			Player player = restTemplate.getForObject(
-//					"https://www.balldontlie.io/api/v1/players/237", Player.class);
-//			LOGGER.info(player.toString());
-//		};
-//	}
 
 }

@@ -26,20 +26,20 @@ public class Player {
     private Long heightFeet;
     @JsonProperty("height_inches")
     @Field(type = FieldType.Long)
-    @Id
     private Long heightInches;
     @JsonProperty("id")
-    @Field(type = FieldType.Long)
-    private Long id;
+    @Field(type = FieldType.Integer)
+    @Id
+    private int id;
     @JsonProperty("last_name")
     @Field(type = FieldType.Text)
     private String lastName;
     @JsonProperty("position")
     @Field(type = FieldType.Text)
     private String position;
-    @JsonProperty("team_id")
-    @Field(type = FieldType.Long)
-    private Long teamId;
+    @JsonProperty("team")
+    @Field(type = FieldType.Nested)
+    private Team team;
     @JsonProperty("weight_pounds")
     @Field(type = FieldType.Long)
     private Long weightPounds;

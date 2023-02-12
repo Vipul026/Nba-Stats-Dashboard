@@ -4,10 +4,9 @@ import com.vipul.nbastatsspringboot.services.GameServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/games")
@@ -42,7 +41,22 @@ public class GameController {
     }
 
     @GetMapping("/season-champions/{season}")
-    public ResponseEntity<?> seasonChampions(@PathVariable("season") Integer season){
-        return gameServices.getSeasonChampion(season);
+    public ResponseEntity<?> seasonChampions(@PathVariable("season") Long season){
+        return new ResponseEntity<>(gameServices.getSeasonChampions(season), HttpStatus.OK);
+    }
+
+    @GetMapping("/save-data")
+    public ResponseEntity<?> saveAllGamesData() throws InterruptedException {
+        return new ResponseEntity<>(gameServices.saveAllGamesData(), HttpStatus.OK);
+    }
+
+    @GetMapping("/games-won")
+    public ResponseEntity<?> getGamesWonByTeamInSeason(@RequestParam Long season, @RequestParam String teamName){
+        return new ResponseEntity<>(gameServices.getGamesWonByTeamInSeason(season, teamName), HttpStatus.OK);
+    }
+
+    @GetMapping("/team-stat")
+    public ResponseEntity<Map<Long,String>> getTeamPerformanceInVariousSeasons(@RequestParam Long fromSeason, @RequestParam Long toSeason, @RequestParam String teamName){
+       return new ResponseEntity<>(gameServices.getTeamPerformanceInVariousSeasons(fromSeason, toSeason, teamName), HttpStatus.OK);
     }
 }
